@@ -22,13 +22,24 @@ def handle_connection(conn, addr, directory):
             headers = dict(line.split(": ", 1)
                            for line in headers_raw.split("\r\n") if ": " in line)
 
+        # Check for Accept-Encoding header
+        accept_encoding = headers.get("Accept-Encoding", "")
+        supports_gzip = "gzip" in accept_encoding.lower()
+
         if method == "GET":
             if target == "/":
                 response = b"HTTP/1.1 200 OK\r\n\r\n"
             elif target.startswith("/echo/"):
                 value = target[6:]
-                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(value)}\r\n\r\n{value}".encode(
-                )
+                content_type = "text/plain"
+                content = value.encode()
+
+                if supports_gzip:
+                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Encoding: gzip\r\n\r\n".encode(
+                    ) + content
+                else:
+                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(content)}\r\n\r\n".encode(
+                    ) + content
             elif target.startswith("/user-agent"):
                 user_agent = headers.get("User-Agent", "")
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
