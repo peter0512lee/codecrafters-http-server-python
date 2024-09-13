@@ -1,9 +1,10 @@
 import os
 import socket
 import threading
+import sys
 
 
-def handle_connection(conn, addr):
+def handle_connection(conn, addr, directory):
     while True:
         data = conn.recv(1024)
         if not data:
@@ -21,8 +22,8 @@ def handle_connection(conn, addr):
             response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
             )
         elif target.startswith("/files/"):
-            file_path = os.path.join("/tmp", target[7:])
-            if os.path.exists(file_path):
+            file_path = os.path.join(directory, target[7:])
+            if os.path.exists(file_path) and os.path.isfile(file_path):
                 with open(file_path, 'rb') as file:
                     content = file.read()
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n".encode(
@@ -36,13 +37,19 @@ def handle_connection(conn, addr):
 
 
 def main():
+    if len(sys.argv) < 3 or sys.argv[1] != "--directory":
+        print("Usage: python app/main.py --directory <directory_path>")
+        sys.exit(1)
+
+    directory = sys.argv[2]
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("localhost", 4221))
         s.listen()
         while True:
             conn, addr = s.accept()
             thread = threading.Thread(
-                target=handle_connection, args=(conn, addr))
+                target=handle_connection, args=(conn, addr, directory))
             thread.start()
 
 
