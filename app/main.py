@@ -11,34 +11,26 @@ def handle_connection(conn, addr, directory):
             break
 
         request = data.decode()
-        request_line, headers_raw = request.split("\r\n", 1)
+        request_line, rest = request.split("\r\n", 1)
         method, target, _ = request_line.split(" ")
 
         # Parse headers
-        headers = dict(line.split(": ", 1)
-                       for line in headers_raw.split("\r\n") if line)
-
-        # Check for Accept-Encoding header
-        accept_encoding = headers.get("Accept-Encoding", "")
-        supports_gzip = "gzip" in accept_encoding
+        headers = {}
+        body = ""
+        if "\r\n\r\n" in rest:
+            headers_raw, body = rest.split("\r\n\r\n", 1)
+            headers = dict(line.split(": ", 1)
+                           for line in headers_raw.split("\r\n") if ": " in line)
 
         if method == "GET":
             if target == "/":
                 response = b"HTTP/1.1 200 OK\r\n\r\n"
             elif target.startswith("/echo/"):
                 value = target[6:]
-                content_type = "text/plain"
-                content = value.encode()
-
-                if supports_gzip:
-                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Encoding: gzip\r\n\r\n".encode(
-                    ) + content
-                else:
-                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(content)}\r\n\r\n".encode(
-                    ) + content
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(value)}\r\n\r\n{value}".encode(
+                )
             elif target.startswith("/user-agent"):
-                user_agent = [h.split(": ")[1] for h in rest.split(
-                    "\r\n") if h.startswith("User-Agent:")][0]
+                user_agent = headers.get("User-Agent", "")
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
                 )
             elif target.startswith("/files/"):
@@ -53,9 +45,7 @@ def handle_connection(conn, addr, directory):
             else:
                 response = b"HTTP/1.1 404 Not Found\r\n\r\n"
         elif method == "POST" and target.startswith("/files/"):
-            headers, body = rest.split("\r\n\r\n", 1)
-            content_length = int([h.split(": ")[1] for h in headers.split(
-                "\r\n") if h.startswith("Content-Length:")][0])
+            content_length = int(headers.get("Content-Length", 0))
 
             # Receive the full body
             while len(body) < content_length:
