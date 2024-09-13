@@ -24,7 +24,9 @@ def handle_connection(conn, addr, directory):
 
         # Check for Accept-Encoding header
         accept_encoding = headers.get("Accept-Encoding", "")
-        supports_gzip = "gzip" in accept_encoding.lower()
+        supported_encodings = [encoding.strip().lower()
+                               for encoding in accept_encoding.split(',')]
+        supports_gzip = "gzip" in supported_encodings
 
         if method == "GET":
             if target == "/":
