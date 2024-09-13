@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 
@@ -19,6 +20,15 @@ def handle_connection(conn, addr):
             user_agent = headers.split("User-Agent: ")[1].split("\r\n")[0]
             response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
             )
+        elif target.startswith("/files/"):
+            file_path = os.path.join("/tmp", target[7:])
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as file:
+                    content = file.read()
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n".encode(
+                ) + content
+            else:
+                response = b"HTTP/1.1 404 Not Found\r\n\r\n"
         else:
             response = b"HTTP/1.1 404 Not Found\r\n\r\n"
         conn.sendall(response)
