@@ -18,6 +18,10 @@ def main():
                 value = target.split("/echo/")[1]
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(value)}\r\n\r\n{value}".encode(
                 )
+            elif target.startswith("/user-agent"):
+                user_agent = headers.split("User-Agent: ")[1].split("\r\n")[0]
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
+                )
             else:
                 response = b"HTTP/1.1 404 Not Found\r\n\r\n"
             conn.sendall(response)
