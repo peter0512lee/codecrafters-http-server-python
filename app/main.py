@@ -2,6 +2,8 @@ import os
 import socket
 import threading
 import sys
+import gzip
+import io
 
 
 def handle_connection(conn, addr, directory):
@@ -37,8 +39,10 @@ def handle_connection(conn, addr, directory):
                 content = value.encode()
 
                 if supports_gzip:
-                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Encoding: gzip\r\n\r\n".encode(
-                    ) + content
+                    # Compress the content
+                    compressed_content = gzip.compress(content)
+                    response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Encoding: gzip\r\nContent-Length: {len(compressed_content)}\r\n\r\n".encode(
+                    ) + compressed_content
                 else:
                     response = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(content)}\r\n\r\n".encode(
                     ) + content
