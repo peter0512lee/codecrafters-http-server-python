@@ -37,11 +37,9 @@ def handle_connection(conn, addr, directory):
 
 
 def main():
-    if len(sys.argv) < 3 or sys.argv[1] != "--directory":
-        print("Usage: python app/main.py --directory <directory_path>")
-        sys.exit(1)
-
-    directory = sys.argv[2]
+    directory = "."  # Default to current directory
+    if len(sys.argv) >= 3 and sys.argv[1] == "--directory":
+        directory = sys.argv[2]
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("localhost", 4221))
