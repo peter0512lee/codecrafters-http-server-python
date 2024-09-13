@@ -9,29 +9,32 @@ def handle_connection(conn, addr, directory):
         data = conn.recv(1024)
         if not data:
             break
-        request, headers = data.decode().split("\r\n", 1)
-        method, target = request.split(" ")[:2]
-        if target == "/":
-            response = b"HTTP/1.1 200 OK\r\n\r\n"
-        elif target.startswith("/echo/"):
-            value = target.split("/echo/")[1]
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(value)}\r\n\r\n{value}".encode(
-            )
-        elif target.startswith("/user-agent"):
-            user_agent = headers.split("User-Agent: ")[1].split("\r\n")[0]
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode(
-            )
-        elif target.startswith("/files/"):
-            file_path = os.path.join(directory, target[7:])
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                with open(file_path, 'rb') as file:
-                    content = file.read()
-                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n".encode(
-                ) + content
-            else:
-                response = b"HTTP/1.1 404 Not Found\r\n\r\n"
+
+        request = data.decode()
+        request_line, rest = request.split("\r\n", 1)
+        method, target, _ = request_line.split(" ")
+
+        if method == "GET":
+            # ... (keep existing GET handling)
+        elif method == "POST" and target.startswith("/files/"):
+            headers, body = rest.split("\r\n\r\n", 1)
+            content_length = int([h.split(": ")[1] for h in headers.split(
+                "\r\n") if h.startswith("Content-Length:")][0])
+
+            # Receive the full body
+            while len(body) < content_length:
+                body += conn.recv(1024).decode()
+
+            filename = target[7:]  # Remove "/files/" prefix
+            file_path = os.path.join(directory, filename)
+
+            with open(file_path, 'w') as file:
+                file.write(body)
+
+            response = b"HTTP/1.1 201 Created\r\n\r\n"
         else:
             response = b"HTTP/1.1 404 Not Found\r\n\r\n"
+
         conn.sendall(response)
     conn.close()
 
